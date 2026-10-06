@@ -1,4 +1,4 @@
-import { createContext, use, type ComponentProps, type ReactNode } from "react";
+import { createContext, use, useEffect, useRef, type ComponentProps, type ReactNode } from "react";
 import { cn } from "../../lib/utils";
 
 const GroupedRows = createContext(false);
@@ -112,12 +112,59 @@ export function WorkLogRow({
 export function WorkLogDetails({
   children,
   kind = "text",
+  followEnd = false,
 }: {
   children: ReactNode;
   kind?: "text" | "panel" | "media";
+  followEnd?: boolean;
 }) {
+  const elementRef = useRef<HTMLDivElement>(null);
+  const followRef = useRef(true);
+  const lastScrollTopRef = useRef(0);
+
+  useEffect(() => {
+    if (!followEnd) return;
+    const element = elementRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    followRef.current = true;
+    const content = element.firstElementChild;
+    const follow = () => {
+      if (!followRef.current) return;
+      const end = element.scrollHeight - element.clientHeight;
+      if (end - element.scrollTop > 1) {
+        element.scrollTop = end;
+      }
+      lastScrollTopRef.current = element.scrollTop;
+    };
+    const observer = new ResizeObserver(follow);
+    if (content) observer.observe(content);
+    follow();
+    return () => observer.disconnect();
+  }, [followEnd]);
+
+  const handleWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (!followEnd) return;
+    if (event.deltaY < 0) followRef.current = false;
+  };
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    event.stopPropagation();
+    followRef.current = false;
+  };
+  const handleScroll = (event: React.UIEvent<HTMLDivElement>) => {
+    if (!followEnd) return;
+    const element = event.currentTarget;
+    const distanceToEnd = element.scrollHeight - element.clientHeight - element.scrollTop;
+    if (distanceToEnd <= 2) {
+      followRef.current = true;
+    } else if (element.scrollTop < lastScrollTopRef.current - 1) {
+      followRef.current = false;
+    }
+    lastScrollTopRef.current = element.scrollTop;
+  };
+
   return (
     <div
+      ref={elementRef}
       className={cn(
         "cursor-auto",
         kind === "text"
@@ -126,8 +173,10 @@ export function WorkLogDetails({
             ? "mt-0.5 mb-1.5"
             : "mt-1",
       )}
+      onWheel={handleWheel}
+      onPointerDown={handlePointerDown}
+      onScroll={handleScroll}
       onClick={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
     >
       {children}
     </div>

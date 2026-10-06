@@ -347,6 +347,22 @@ describe("ClientSettings chat width", () => {
   });
 });
 
+describe("ClientSettings reasoning auto-expand", () => {
+  it("keeps off for existing settings without a saved choice", () => {
+    expect(decodeClientSettings({}).expandReasoningWhileStreaming).toBe(false);
+  });
+
+  it.each([true, false])("preserves a saved choice of %s", (expandReasoningWhileStreaming) => {
+    const settings = decodeClientSettings({ expandReasoningWhileStreaming });
+    expect(encodeClientSettings(settings).expandReasoningWhileStreaming).toBe(
+      expandReasoningWhileStreaming,
+    );
+    expect(
+      decodeClientSettingsPatch({ expandReasoningWhileStreaming }).expandReasoningWhileStreaming,
+    ).toBe(expandReasoningWhileStreaming);
+  });
+});
+
 describe("ClientSettings load balancing", () => {
   it("requires opt-in when settings are new or omit load balancing", () => {
     expect(decodeClientSettings({}).loadBalancingEnabled).toBe(false);

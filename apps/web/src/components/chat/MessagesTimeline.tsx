@@ -205,6 +205,7 @@ import {
   resolveTimelineMinimapNavigationInteractive,
   resolveTimelineMinimapTopPercent,
   resolveWorkGroupScrollIndex,
+  shouldAutoRevealLiveReasoning,
   shouldFollowWorkGroupAppend,
   shouldPreserveAssistantLineBreaks,
   toolGroupAction,
@@ -338,6 +339,7 @@ interface TimelineRowSharedState {
   onWorktreeSetupWorkLocally: (() => void) | null;
   onOpenWorktreeSetupTerminal: ((terminalId: string) => void) | null;
   workGroupViewState: WorkGroupViewState;
+  expandReasoningWhileStreaming: boolean;
 }
 
 interface TimelineRowActivityState {
@@ -758,6 +760,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     readonly workspaceRoot: string | undefined;
     readonly projection: MessagesTimelineRowsProjection;
   } | null>(null);
+  const expandReasoningWhileStreaming = useClientSettings(
+    (settings) => settings.expandReasoningWhileStreaming,
+  );
   const rawRows = useMemo(() => {
     const previous = rowsProjectionRef.current;
     const projection = deriveMessagesTimelineRowsWithState(
@@ -1185,6 +1190,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onWorktreeSetupWorkLocally: onWorktreeSetupWorkLocally ?? null,
       onOpenWorktreeSetupTerminal: onOpenWorktreeSetupTerminal ?? null,
       workGroupViewState,
+      expandReasoningWhileStreaming,
     }),
     [
       readyCitationRequest,
@@ -1220,6 +1226,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       onWorktreeSetupWorkLocally,
       onOpenWorktreeSetupTerminal,
       workGroupViewState,
+      expandReasoningWhileStreaming,
     ],
   );
   const compactionAwaitingRow =
@@ -3646,43 +3653,62 @@ function LiveWorkEntryTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "
     : "";
   const label = questionHeading || liveWorkEntryLabel(row.entry, ctx.workspaceRoot, row.active);
   const failed = workEntryDisplayIndicatesToolFailure(row.entry);
+  const isReasoning = row.entry.itemType === "reasoning";
+  const autoRevealReasoning = shouldAutoRevealLiveReasoning(
+    row.entry,
+    row.active,
+    ctx.expandReasoningWhileStreaming,
+  );
+  let reasoningTitle: string;
+  if (row.entry.toolLifecycleStatus === "inProgress") {
+    reasoningTitle = "Thinking";
+  } else {
+    reasoningTitle = "Thought";
+  }
+
+  let activityLabel: ReactNode;
+  if (row.entry.questionAnswer && hasQuestionAnswer(row.entry.questionAnswer)) {
+    activityLabel = (
+      <span className="flex min-w-0 gap-1.5">
+        <span className="min-w-0 truncate">{label}</span>
+        <span className="min-w-0 truncate text-foreground">
+          {getQuestionAnswerPreview(row.entry.questionAnswer)}
+        </span>
+      </span>
+    );
+  } else if (isReasoning && autoRevealReasoning) {
+    activityLabel = <span className="truncate">{reasoningTitle}</span>;
+  } else if (isReasoning) {
+    activityLabel = (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm, [remarkThoughtPreview, row.active ? "Thinking" : "Thought"]]}
+      >
+        {row.entry.detail ?? label}
+      </ReactMarkdown>
+    );
+  } else {
+    activityLabel = label;
+  }
 
   return (
-    <button
-      type="button"
-      className="group/live-work flex min-h-6 w-full max-w-full cursor-pointer items-center rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
-      aria-label={failed ? `${label}, tool call failed` : undefined}
-      aria-expanded={row.expanded}
-      onClick={() => ctx.onToggleWorkGroup(row.groupId, row.id)}
-    >
-      <LiveActivityRow
-        label={
-          row.entry.questionAnswer && hasQuestionAnswer(row.entry.questionAnswer) ? (
-            <span className="flex min-w-0 gap-1.5">
-              <span className="min-w-0 truncate">{label}</span>
-              <span className="min-w-0 truncate text-foreground">
-                {getQuestionAnswerPreview(row.entry.questionAnswer)}
-              </span>
-            </span>
-          ) : row.entry.itemType === "reasoning" ? (
-            <ReactMarkdown
-              remarkPlugins={[
-                remarkGfm,
-                [remarkThoughtPreview, row.active ? "Thinking" : "Thought"],
-              ]}
-            >
-              {row.entry.detail ?? label}
-            </ReactMarkdown>
-          ) : (
-            label
-          )
-        }
-        iconName={workEntryIconName(row.entry)}
-        toolIcon={row.entry.toolIcon ?? row.entry.toolSource?.icon}
-        failed={failed}
-        active={row.active}
-      />
-    </button>
+    <>
+      <button
+        type="button"
+        className="group/live-work flex min-h-6 w-full max-w-full cursor-pointer items-center rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
+        aria-label={failed ? `${label}, tool call failed` : undefined}
+        aria-expanded={row.expanded || autoRevealReasoning}
+        onClick={() => ctx.onToggleWorkGroup(row.groupId, row.id)}
+      >
+        <LiveActivityRow
+          label={activityLabel}
+          iconName={workEntryIconName(row.entry)}
+          toolIcon={row.entry.toolIcon ?? row.entry.toolSource?.icon}
+          failed={failed}
+          active={row.active}
+        />
+      </button>
+      {autoRevealReasoning ? <ReasoningTraceContent entries={[row.entry]} autoReveal /> : null}
+    </>
   );
 }
 
@@ -4970,11 +4996,17 @@ function remarkThoughtPreview(fallback: string) {
   };
 }
 
-function ReasoningTraceContent({ entries }: { entries: ReadonlyArray<TimelineWorkEntry> }) {
+function ReasoningTraceContent({
+  entries,
+  autoReveal = false,
+}: {
+  entries: ReadonlyArray<TimelineWorkEntry>;
+  autoReveal?: boolean;
+}) {
   const ctx = use(TimelineRowCtx);
   const { isWorking, latestRunId } = use(TimelineRowActivityCtx);
   return (
-    <WorkLogDetails>
+    <WorkLogDetails followEnd={autoReveal}>
       {entries.map((entry) => (
         <ChatMarkdown
           key={entry.id}

@@ -31,6 +31,7 @@ import {
   shouldPreserveAssistantLineBreaks,
   type MessagesTimelineRow,
   resolveTimelineToolPresentation,
+  shouldAutoRevealLiveReasoning,
   workEntryDisplayLabel,
   workEntryReadOutput,
   workEntryIsVisibleInGroup,
@@ -125,6 +126,26 @@ describe("work entry labels", () => {
     expect(workEntryIsVisibleInGroup(thought)).toBe(true);
     expect(workEntryIsVisibleInGroup({ ...thought, toolLifecycleStatus: "completed" })).toBe(true);
     expect(workEntryIsVisibleInGroup({ ...thought, detail: "  " })).toBe(false);
+  });
+
+  it("auto-reveals a live reasoning trace only while it is thinking", () => {
+    const thought = {
+      ...entry,
+      itemType: "reasoning" as const,
+      tone: "thinking" as const,
+      detail: "Check **ordering** first.",
+      toolLifecycleStatus: "inProgress" as const,
+    };
+    expect(shouldAutoRevealLiveReasoning(thought, true, true)).toBe(true);
+    expect(shouldAutoRevealLiveReasoning(thought, true, false)).toBe(false);
+    expect(shouldAutoRevealLiveReasoning(thought, false, true)).toBe(false);
+    expect(
+      shouldAutoRevealLiveReasoning({ ...thought, toolLifecycleStatus: "completed" }, true, true),
+    ).toBe(false);
+    expect(shouldAutoRevealLiveReasoning({ ...thought, detail: "  " }, true, true)).toBe(false);
+    expect(
+      shouldAutoRevealLiveReasoning({ ...entry, toolLifecycleStatus: "inProgress" }, true, true),
+    ).toBe(false);
   });
 
   it.each([

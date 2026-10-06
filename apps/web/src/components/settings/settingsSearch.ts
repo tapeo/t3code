@@ -230,6 +230,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["wide full width column layout messages composer monitor"],
   },
   {
+    id: "expand-reasoning-while-streaming",
+    title: "Expand reasoning while streaming",
+    to: "/settings/appearance",
+    searchTerms: ["thinking thought reasoning trace expand open collapse live stream model"],
+  },
+  {
     id: "panel-animations",
     title: "Panel animations",
     to: "/settings/appearance",

@@ -543,6 +543,10 @@ export function useSettingsRestore(onRestored?: () => void) {
         ? ["Diff colors"]
         : []),
       ...(settings.chatWidth !== DEFAULT_UNIFIED_SETTINGS.chatWidth ? ["Chat width"] : []),
+      ...(settings.expandReasoningWhileStreaming !==
+      DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming
+        ? ["Reasoning auto-expand"]
+        : []),
       ...(settings.panelAnimationDurationMs !== DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs
         ? ["Panel animations"]
         : []),
@@ -670,6 +674,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.appearanceContrast,
       settings.diffColorScheme,
       settings.chatWidth,
+      settings.expandReasoningWhileStreaming,
       settings.enableAgentBrowserAccess,
       settings.confirmQuit,
       settings.confirmThreadArchive,
@@ -787,6 +792,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
+      expandReasoningWhileStreaming: DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming,
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
@@ -1445,6 +1451,33 @@ export function AppearanceSettingsPanel() {
                 </SelectPopup>
               </Select>
             </div>
+          }
+        />
+        <SettingsRow
+          {...searchableSetting("expand-reasoning-while-streaming")}
+          description="Open a reasoning block while the model is thinking and follow its newest lines. It folds when the thought ends."
+          resetAction={
+            settings.expandReasoningWhileStreaming !==
+            DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming ? (
+              <SettingResetButton
+                label="reasoning auto-expand"
+                onClick={() =>
+                  updateSettings({
+                    expandReasoningWhileStreaming:
+                      DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.expandReasoningWhileStreaming}
+              onCheckedChange={(checked) =>
+                updateSettings({ expandReasoningWhileStreaming: Boolean(checked) })
+              }
+              aria-label="Expand reasoning while streaming"
+            />
           }
         />
       </SettingsSection>
