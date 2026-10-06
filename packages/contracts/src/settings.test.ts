@@ -363,6 +363,20 @@ describe("ClientSettings reasoning auto-expand", () => {
   });
 });
 
+describe("ClientSettings streaming transcript", () => {
+  it("keeps off for existing settings without a saved choice", () => {
+    expect(decodeClientSettings({}).streamingTranscript).toBe(false);
+  });
+
+  it.each([true, false])("preserves a saved choice of %s", (streamingTranscript) => {
+    const settings = decodeClientSettings({ streamingTranscript });
+    expect(encodeClientSettings(settings).streamingTranscript).toBe(streamingTranscript);
+    expect(decodeClientSettingsPatch({ streamingTranscript }).streamingTranscript).toBe(
+      streamingTranscript,
+    );
+  });
+});
+
 describe("ClientSettings load balancing", () => {
   it("requires opt-in when settings are new or omit load balancing", () => {
     expect(decodeClientSettings({}).loadBalancingEnabled).toBe(false);

@@ -236,6 +236,14 @@ export const SETTINGS_SEARCH_ITEMS = [
     searchTerms: ["thinking thought reasoning trace expand open collapse live stream model"],
   },
   {
+    id: "streaming-transcript",
+    title: "Streaming transcript",
+    to: "/settings/appearance",
+    searchTerms: [
+      "live tool calls list history log keep every action reasoning transcript append timeline",
+    ],
+  },
+  {
     id: "panel-animations",
     title: "Panel animations",
     to: "/settings/appearance",

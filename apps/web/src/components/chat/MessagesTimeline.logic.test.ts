@@ -2546,6 +2546,121 @@ describe("deriveMessagesTimelineRows", () => {
     ]);
   });
 
+  it("keeps every live action as its own row in the streaming transcript", () => {
+    const liveEntries = [
+      {
+        id: "reasoning-entry",
+        kind: "work" as const,
+        createdAt: "2026-01-01T00:00:04Z",
+        entry: {
+          id: "live-reasoning",
+          createdAt: "2026-01-01T00:00:04Z",
+          runId: "turn-1" as never,
+          label: "Thinking",
+          detail: "Checking the failing test.",
+          tone: "thinking" as const,
+          itemType: "reasoning" as const,
+          toolLifecycleStatus: "inProgress" as const,
+        },
+      },
+      {
+        id: "completed-entry",
+        kind: "work" as const,
+        createdAt: "2026-01-01T00:00:05Z",
+        entry: {
+          id: "completed-command",
+          createdAt: "2026-01-01T00:00:05Z",
+          runId: "turn-1" as never,
+          label: "Ran command",
+          command: "rg toolCall",
+          requestKind: "command",
+          tone: "tool" as const,
+          toolLifecycleStatus: "completed" as const,
+        },
+      },
+      {
+        id: "running-entry",
+        kind: "work" as const,
+        createdAt: "2026-01-01T00:00:06Z",
+        entry: {
+          id: "running-command",
+          createdAt: "2026-01-01T00:00:06Z",
+          runId: "turn-1" as never,
+          label: "Running tests",
+          command: "vp test run",
+          requestKind: "command",
+          tone: "tool" as const,
+          toolLifecycleStatus: "inProgress" as const,
+        },
+      },
+    ];
+    const rows = deriveMessagesTimelineRows({
+      timelineEntries: liveEntries,
+      latestRun: {
+        runId: "turn-1" as never,
+        status: "running",
+        startedAt: "2026-01-01T00:00:00Z",
+        completedAt: null,
+      },
+      isWorking: true,
+      streamingTranscript: true,
+      activeTurnStartedAt: "2026-01-01T00:00:00Z",
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+
+    const collapsed = deriveMessagesTimelineRows({
+      timelineEntries: liveEntries,
+      latestRun: {
+        runId: "turn-1" as never,
+        status: "running",
+        startedAt: "2026-01-01T00:00:00Z",
+        completedAt: null,
+      },
+      isWorking: true,
+      activeTurnStartedAt: "2026-01-01T00:00:00Z",
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+    expect(collapsed.filter((row) => row.kind === "work-live")).toHaveLength(1);
+
+    expect(rows.map((row) => row.kind)).toEqual(["working", "work-live", "work", "work"]);
+    expect(rows.find((row) => row.kind === "work-live")).toMatchObject({
+      active: true,
+      revealReasoning: true,
+      entry: { id: "live-reasoning", itemType: "reasoning" },
+    });
+    expect(rows.filter((row) => row.kind === "work").map((row) => row.id)).toEqual([
+      "completed-entry",
+      "running-entry",
+    ]);
+
+    const afterReasoningEnded = deriveMessagesTimelineRows({
+      timelineEntries: [
+        {
+          ...liveEntries[0]!,
+          entry: { ...liveEntries[0]!.entry, toolLifecycleStatus: "completed" as const },
+        },
+        liveEntries[1]!,
+      ],
+      latestRun: {
+        runId: "turn-1" as never,
+        status: "running",
+        startedAt: "2026-01-01T00:00:00Z",
+        completedAt: null,
+      },
+      isWorking: true,
+      streamingTranscript: true,
+      activeTurnStartedAt: "2026-01-01T00:00:00Z",
+      turnDiffSummaries: [],
+      supportsConversationRollback: false,
+    });
+    expect(afterReasoningEnded.find((row) => row.kind === "work-live")).toMatchObject({
+      revealReasoning: true,
+      entry: { id: "live-reasoning", toolLifecycleStatus: "completed" },
+    });
+  });
+
   it("does not revive stale in-progress tools before a fresh send has a turn id", () => {
     const rows = deriveMessagesTimelineRows({
       timelineEntries: [

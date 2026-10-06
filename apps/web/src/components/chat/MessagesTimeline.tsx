@@ -763,6 +763,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   const expandReasoningWhileStreaming = useClientSettings(
     (settings) => settings.expandReasoningWhileStreaming,
   );
+  const streamingTranscript = useClientSettings((settings) => settings.streamingTranscript);
   const rawRows = useMemo(() => {
     const previous = rowsProjectionRef.current;
     const projection = deriveMessagesTimelineRowsWithState(
@@ -775,6 +776,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         expandedWorkGroupIds,
         isWorking,
         runlessWorkActive,
+        streamingTranscript,
         activeTurnStartedAt,
         turnDiffSummaries,
         supportsConversationRollback,
@@ -798,6 +800,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     expandedWorkGroupIds,
     isWorking,
     runlessWorkActive,
+    streamingTranscript,
     activeTurnStartedAt,
     turnDiffSummaries,
     supportsConversationRollback,
@@ -3654,11 +3657,11 @@ function LiveWorkEntryTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "
   const label = questionHeading || liveWorkEntryLabel(row.entry, ctx.workspaceRoot, row.active);
   const failed = workEntryDisplayIndicatesToolFailure(row.entry);
   const isReasoning = row.entry.itemType === "reasoning";
-  const autoRevealReasoning = shouldAutoRevealLiveReasoning(
-    row.entry,
-    row.active,
-    ctx.expandReasoningWhileStreaming,
-  );
+  const autoRevealReasoning =
+    shouldAutoRevealLiveReasoning(row.entry, row.active, ctx.expandReasoningWhileStreaming) ||
+    (row.revealReasoning === true &&
+      ctx.expandReasoningWhileStreaming &&
+      Boolean(row.entry.detail?.trim()));
   let reasoningTitle: string;
   if (row.entry.toolLifecycleStatus === "inProgress") {
     reasoningTitle = "Thinking";

@@ -547,6 +547,9 @@ export function useSettingsRestore(onRestored?: () => void) {
       DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming
         ? ["Reasoning auto-expand"]
         : []),
+      ...(settings.streamingTranscript !== DEFAULT_UNIFIED_SETTINGS.streamingTranscript
+        ? ["Streaming transcript"]
+        : []),
       ...(settings.panelAnimationDurationMs !== DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs
         ? ["Panel animations"]
         : []),
@@ -675,6 +678,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       settings.diffColorScheme,
       settings.chatWidth,
       settings.expandReasoningWhileStreaming,
+      settings.streamingTranscript,
       settings.enableAgentBrowserAccess,
       settings.confirmQuit,
       settings.confirmThreadArchive,
@@ -793,6 +797,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
       chatWidth: DEFAULT_UNIFIED_SETTINGS.chatWidth,
       expandReasoningWhileStreaming: DEFAULT_UNIFIED_SETTINGS.expandReasoningWhileStreaming,
+      streamingTranscript: DEFAULT_UNIFIED_SETTINGS.streamingTranscript,
       timestampFormat: DEFAULT_UNIFIED_SETTINGS.timestampFormat,
       notificationMode: DEFAULT_UNIFIED_SETTINGS.notificationMode,
       inAppNotificationsEnabled: DEFAULT_UNIFIED_SETTINGS.inAppNotificationsEnabled,
@@ -1477,6 +1482,32 @@ export function AppearanceSettingsPanel() {
                 updateSettings({ expandReasoningWhileStreaming: Boolean(checked) })
               }
               aria-label="Expand reasoning while streaming"
+            />
+          }
+        />
+
+        <SettingsRow
+          {...searchableSetting("streaming-transcript")}
+          description="Keep every live tool call and reasoning block as its own row while a turn runs, instead of replacing the previous one. Scroll back to read the whole action history."
+          resetAction={
+            settings.streamingTranscript !== DEFAULT_UNIFIED_SETTINGS.streamingTranscript ? (
+              <SettingResetButton
+                label="streaming transcript"
+                onClick={() =>
+                  updateSettings({
+                    streamingTranscript: DEFAULT_UNIFIED_SETTINGS.streamingTranscript,
+                  })
+                }
+              />
+            ) : null
+          }
+          control={
+            <Switch
+              checked={settings.streamingTranscript}
+              onCheckedChange={(checked) =>
+                updateSettings({ streamingTranscript: Boolean(checked) })
+              }
+              aria-label="Streaming transcript"
             />
           }
         />
